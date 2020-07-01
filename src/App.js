@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
 import './App.css';
 import Navbar from './Components/Navbars';
-//import Web3 from 'web3'
+import Web3 from 'web3'
 import {PythonShell} from 'python-shell';
 
 
 import { Badge, Card, CardBody, Input, Container, Row, Col, Form, Alert } from 'reactstrap';
+import { render } from '@testing-library/react';
 
 export default class App extends Component {
   
@@ -18,7 +19,10 @@ export default class App extends Component {
       duration: '',
       Address: '0x3e834D49b863057F5d67DaeCB111588bE7Ce987d',
       flag: false,
-      hash: ''
+      hash: '',
+      blockNumber: '',
+      error: false,
+      errMessage : ""
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -26,6 +30,7 @@ export default class App extends Component {
     this.handleChangeHash = this.handleChangeHash.bind(this);
     this.sendHash = this.sendHash.bind(this);
     this.loadWeb3 = this.loadWeb3.bind(this);
+    this.handleChangeBlockNumber = this.handleChangeBlockNumber.bind(this);
   }
 
   handleChange(event) {
@@ -36,6 +41,9 @@ export default class App extends Component {
   handleChangeHash(e){
     this.setState({ hash: e.target.value})
 
+  }
+  handleChangeBlockNumber(e){
+    this.setState({ blockNumber: e.target.value})
   }
 
   handleSubmit(event) {
@@ -55,35 +63,49 @@ export default class App extends Component {
   sendHash(e){
     e.preventDefault();
     var txHash = this.state.hash
+    var blockNo = this.state.blockNumber
+    var totTime = this.state.duration
     localStorage.setItem('txHash', txHash)
-    this.loadWeb3(txHash)
+    this.loadWeb3(txHash,blockNo,totTime)
   }
 
-  loadWeb3(txH){
-    // var Web3 = new Web3(new Web3.providers.HttpProvider('https://kovan.infura.io/v3/d57c3252e3fb4280947117891e659ac6'));
-    // const account = '0x3e834D49b863057F5d67DaeCB111588bE7Ce987d'.toLowerCase();
+   checkLastBlock =  async (txH,blockNo,totTime) => {
+    var web3 = new Web3(new Web3.providers.HttpProvider('https://kovan.infura.io/v3/d57c3252e3fb4280947117891e659ac6'));
+    const account = '0x3e834D49b863057F5d67DaeCB111588bE7Ce987d'.toLowerCase();
+    let block = await web3.eth.getBlock(blockNo);
+    console.log('Searching block', block);
+    if(!block){
+     this.setState({ error: true}) 
+     this.setState({errMessage: "Error! Not a valid Block Number "})
+    }else{
+      this.setState({error: false})
+    }
+     
+     if(block && block.transactions){
+       for(let txHash of block.transactions){
+         if(txH === txHash){
+          let tx = await web3.eth.getTransaction(txHash);
+         console.log(tx)
+         if(account === tx.to.toLowerCase()){
+           console.log("found")
+        
+          console.log("validated")
+           return true;
+         } 
+         }
+         else {
+           this.setState({error: true})
+           this.setState({errMessage: "Incorrect Details, Please try again."})
+           console.log("Not validated")
+           return false
+         }
+       }
+     }
+   }
 
-    // return async function checkLastBlock(){
-    //   let block = await Web3.eth.getBlock('latest');
-    //   console.log('Searching block');
-    //   if(block && block.transactions){
-    //     for(let txHash of block.transactions){
-    //       if(txHash === txH){
-    //         return true;
-    //       }
-    //       else {
-    //         return false
-    //       }
-    //     }
-    //   }
-    // }
-
-    PythonShell.run('relay_script.py', null, function(err){
-      if(err) throw err;
-      console.log('finished')
-    })
-
-
+  loadWeb3(txH,blockNo,totTime){
+    this.checkLastBlock(txH,blockNo,totTime);
+    
 
   }
 
@@ -124,8 +146,21 @@ export default class App extends Component {
                 <Alert color="primary">
                   {this.state.Address}
                  </Alert>
+                 {this.state.error
+                 ?  <Alert color="danger">
+                     {this.state.errMessage}
+                   </Alert>
+                   : null }
                  <Form onSubmit={this.sendHash}>
-                   <Input type="text" placeholder="Enter your transaction hash " value={this.state.hash} onChange={this.handleChangeHash} />
+                   <Row className="mt-4 mb-3">
+                   <Col md="6">
+                     <Input type="text" placeholder="Enter your Block Number" value={this.state.blockNumber} onChange={this.handleChangeBlockNumber} />
+                     </Col>
+                     
+                   <Col md="6">
+                     <Input type="text" placeholder="Enter your transaction hash " value={this.state.hash} onChange={this.handleChangeHash} />
+                     </Col>
+                   </Row>
                    <Input type="submit" value="Send Hash"/>
                  </Form>
                 </div>
