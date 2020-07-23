@@ -22,7 +22,8 @@ export default class App extends Component {
       hash: '',
       blockNumber: '',
       error: false,
-      errMessage : ""
+      errMessage : "",
+      apiResponse: ""
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -31,6 +32,7 @@ export default class App extends Component {
     this.sendHash = this.sendHash.bind(this);
     this.loadWeb3 = this.loadWeb3.bind(this);
     this.handleChangeBlockNumber = this.handleChangeBlockNumber.bind(this);
+    this.callAPI = this.callAPI.bind(this)
   }
 
   handleChange(event) {
@@ -52,6 +54,12 @@ export default class App extends Component {
     // alert('value' + this.state.duration);
     this.findTotal(tots)
 
+  }
+
+  callAPI(){
+    fetch("https://clever-lionfish-27.serverless.social/rent")
+    .then(res => res.text())
+    .then(res => this.setState({apiResponse: res}));
   }
 
   findTotal(tots) {
@@ -90,6 +98,7 @@ export default class App extends Component {
            console.log("found")
         
           console.log("validated")
+          this.callAPI()
            return true;
          } 
          }
